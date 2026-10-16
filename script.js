@@ -2,16 +2,18 @@
 
 /* =========================================================
    NAOL 3D SMART RULER
-   Part 3 of 3 — Complete JavaScript
-   Camera, Photo Measurement, Calibration and Unit Converter
+   Complete JavaScript
+   Camera Fix + Photo Measurement + Calibration
+   Height Calculator + Unit Converter
    ========================================================= */
 
 document.addEventListener("DOMContentLoaded", () => {
-    const $ = (id) => document.getElementById(id);
 
     /* =====================================================
-       ELEMENTS
+       1. HTML ELEMENTS
        ===================================================== */
+
+    const $ = (id) => document.getElementById(id);
 
     const systemStatus = $("systemStatus");
 
@@ -63,10 +65,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const swapUnitsBtn = $("swapUnitsBtn");
     const conversionResult = $("conversionResult");
 
-    const currentYear = $("currentYear");
 
     /* =====================================================
-       STATE
+       2. APPLICATION STATE
        ===================================================== */
 
     let cameraStream = null;
@@ -77,17 +78,16 @@ document.addEventListener("DOMContentLoaded", () => {
     let photoReady = false;
     let photoPoints = [];
 
-    // Number of meters represented by one image pixel.
     let metersPerPixel = null;
-
-    // Last measured length, stored in meters.
     let lastMeasuredMeters = null;
 
     let currentObjectUrl = null;
 
+    let cameraStarting = false;
+
+
     /* =====================================================
-       UNIT CONVERSION DATA
-       All units are converted through meters.
+       3. UNIT CONVERSION
        ===================================================== */
 
     const UNIT_TO_METERS = {
@@ -106,8 +106,9 @@ document.addEventListener("DOMContentLoaded", () => {
         in: "in"
     };
 
+
     /* =====================================================
-       GENERAL HELPERS
+       4. GENERAL HELPERS
        ===================================================== */
 
     function setStatus(message, type = "ready") {
@@ -123,17 +124,22 @@ document.addEventListener("DOMContentLoaded", () => {
         );
 
         systemStatus.classList.add("status-" + type);
+
         systemStatus.setAttribute("aria-live", "polite");
     }
 
-    function setText(element, text) {
+
+    function setText(element, value) {
         if (element) {
-            element.textContent = String(text);
+            element.textContent = String(value);
         }
     }
 
+
     function formatNumber(value, decimals = 3) {
-        if (!Number.isFinite(value)) return "—";
+        if (!Number.isFinite(value)) {
+            return "—";
+        }
 
         return Number(value.toFixed(decimals)).toLocaleString(
             undefined,
@@ -142,6 +148,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         );
     }
+
 
     function showMessage(element, message, type = "") {
         if (!element) return;
@@ -159,6 +166,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+
     function scrollToStudio() {
         const target = cameraFrame || studioTitle;
 
@@ -170,15 +178,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    function metersToUnit(meters, unit) {
-        const factor = UNIT_TO_METERS[unit];
-
-        if (!factor || !Number.isFinite(meters)) {
-            return NaN;
-        }
-
-        return meters / factor;
-    }
 
     function unitToMeters(value, unit) {
         const factor = UNIT_TO_METERS[unit];
@@ -190,228 +189,86 @@ document.addEventListener("DOMContentLoaded", () => {
         return value * factor;
     }
 
-    function getSelectedResultUnit() {
-        if (!resultUnit) return "m";
 
-        const selected = String(resultUnit.value || "m")
+    function metersToUnit(value, unit) {
+        const factor = UNIT_TO_METERS[unit];
+
+        if (!factor || !Number.isFinite(value)) {
+            return NaN;
+        }
+
+        return value / factor;
+    }
+
+
+    function getSelectedResultUnit() {
+        if (!resultUnit) {
+            return "m";
+        }
+
+        const unit = String(resultUnit.value || "m")
             .toLowerCase()
             .trim();
 
-        return UNIT_TO_METERS[selected] ? selected : "m";
+        return UNIT_TO_METERS[unit] ? unit : "m";
     }
 
+
     /* =====================================================
-       RESULT DISPLAY
+       5. RESULT DISPLAY
        ===================================================== */
 
     function displayMeasurement(meters, explanation) {
         if (!Number.isFinite(meters) || meters < 0) {
             setText(resultValue, "—");
-            setText(resultExplanation, "Safartuun sirrii hin taane.");
+
+            setText(
+                resultExplanation,
+                "Safartuun sirrii hin taane."
+            );
+
             return;
         }
 
         lastMeasuredMeters = meters;
 
         const unit = getSelectedResultUnit();
+
         const converted = metersToUnit(meters, unit);
 
-        setText(resultValue, formatNumber(converted, 4));
-        setText(resultExplanation, explanation);
-    }
+        setText(
+            resultValue,
+            formatNumber(converted, 4)
+        );
 
-    function refreshDisplayedMeasurement() {
-        if (lastMeasuredMeters === null) return;
-
-        displayMeasurement(
-            lastMeasuredMeters,
-            resultExplanation
-                ? resultExplanation.textContent
-                : "Safartuu xumurame."
+        setText(
+            resultExplanation,
+            explanation
         );
     }
 
-    /* =====================================================
-       CAMERA CONTROL
-       ===================================================== */
 
-    function stopCamera() {
-        if (cameraStream) {
-            cameraStream.getTracks().forEach((track) => {
-                track.stop();
-            });
-
-            cameraStream = null;
-        }
-
-        if (cameraVideo) {
-            cameraVideo.pause();
-            cameraVideo.srcObject = null;
-            cameraVideo.style.display = "none";
-        }
-
-        if (cameraOverlay) {
-            cameraOverlay.style.display = "none";
-        }
-
-        if (stopCameraBtn) {
-            stopCameraBtn.style.display = "none";
-        }
-
-        if (currentMode === "camera") {
-            currentMode = photoReady ? "photo" : "empty";
-        }
-
-        if (photoReady) {
-            showPhotoCanvas();
-        } else {
-            showPlaceholder();
-        }
-    }
-
-    async function startCamera() {
-        if (!navigator.mediaDevices ||
-            !navigator.mediaDevices.getUserMedia) {
-
-            setStatus("Camera browser kana irratti hin deeggaramu.", "error");
-
-            showMessage(
-                measurementInstructions,
-                "Camera fayyadamuuf browser camera deeggaru fi HTTPS barbaachisa. Suuraa upload gochuunis ni danda'ama.",
-                "error"
-            );
-
+    function refreshDisplayedMeasurement() {
+        if (lastMeasuredMeters === null) {
             return;
         }
 
-        stopCamera();
+        const explanation = resultExplanation
+            ? resultExplanation.textContent
+            : "Safartuu xumurame.";
 
-        setStatus("Camera banuuf yaalaa jira...", "warning");
-
-        try {
-            cameraStream = await navigator.mediaDevices.getUserMedia({
-                video: {
-                    facingMode: {
-                        ideal: "environment"
-                    },
-                    width: {
-                        ideal: 1920
-                    },
-                    height: {
-                        ideal: 1080
-                    }
-                },
-                audio: false
-            });
-
-            if (!cameraVideo) {
-                throw new Error("Video element hin argamne.");
-            }
-
-            cameraVideo.srcObject = cameraStream;
-            cameraVideo.style.display = "block";
-
-            if (uploadedImage) {
-                uploadedImage.style.display = "none";
-            }
-
-            if (measurementCanvas) {
-                measurementCanvas.style.display = "none";
-            }
-
-            if (cameraPlaceholder) {
-                cameraPlaceholder.style.display = "none";
-            }
-
-            if (cameraOverlay) {
-                cameraOverlay.style.display = "block";
-            }
-
-            if (stopCameraBtn) {
-                stopCameraBtn.style.display = "inline-flex";
-            }
-
-            currentMode = "camera";
-
-            await cameraVideo.play();
-
-            setStatus("Camera hojii irra jira", "active");
-
-            setText(studioTitle, "Live Camera");
-            setText(
-                studioDescription,
-                "Suuraa yeroo ammaa arguu dandeessa. Safartuu sirrii argachuuf reference ykn fageenya beekamaa fayyadami."
-            );
-
-            showMessage(
-                measurementInstructions,
-                "Camera amma banameera. Kun live view dha; dheerina dhugaa ofumaan hin safaru. Safartuu suuraa irratti gochuuf suuraa upload godhi.",
-                "warning"
-            );
-
-            scrollToStudio();
-
-        } catch (error) {
-            console.error("Camera error:", error);
-
-            if (cameraStream) {
-                cameraStream.getTracks().forEach((track) => {
-                    track.stop();
-                });
-
-                cameraStream = null;
-            }
-
-            if (cameraVideo) {
-                cameraVideo.srcObject = null;
-                cameraVideo.style.display = "none";
-            }
-
-            if (cameraOverlay) {
-                cameraOverlay.style.display = "none";
-            }
-
-            if (stopCameraBtn) {
-                stopCameraBtn.style.display = "none";
-            }
-
-            currentMode = photoReady ? "photo" : "empty";
-
-            if (photoReady) {
-                showPhotoCanvas();
-            } else {
-                showPlaceholder();
-            }
-
-            setStatus("Camera banuun hin danda'amne.", "error");
-
-            let message =
-                "Camera hin banamne. Permission camera kenni ykn suuraa upload godhi.";
-
-            if (error && error.name === "NotAllowedError") {
-                message =
-                    "Camera permission dhoorkameera. Browser settings keessatti camera eeyyami.";
-            } else if (error && error.name === "NotFoundError") {
-                message =
-                    "Camera hin argamne. Bilbila kee irratti camera jiraachuu mirkaneessi.";
-            } else if (error && error.name === "NotReadableError") {
-                message =
-                    "Camera app biraan fayyadamaa jiraachuu danda'a. App sana cufiitii irra deebi'i.";
-            }
-
-            showMessage(
-                measurementInstructions,
-                message,
-                "error"
-            );
-        }
+        displayMeasurement(
+            lastMeasuredMeters,
+            explanation
+        );
     }
 
+
     /* =====================================================
-       PLACEHOLDER DISPLAY
+       6. VIDEO AND CAMERA DISPLAY
        ===================================================== */
 
-    function showPlaceholder() {
+    function hideAllCameraViews() {
         if (cameraVideo) {
             cameraVideo.style.display = "none";
         }
@@ -427,6 +284,11 @@ document.addEventListener("DOMContentLoaded", () => {
         if (cameraOverlay) {
             cameraOverlay.style.display = "none";
         }
+    }
+
+
+    function showPlaceholder() {
+        hideAllCameraViews();
 
         if (cameraPlaceholder) {
             cameraPlaceholder.style.display = "flex";
@@ -437,12 +299,12 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    /* =====================================================
-       PHOTO CANVAS SETUP
-       ===================================================== */
 
     function showPhotoCanvas() {
-        if (!photoReady || !measurementCanvas || !cameraFrame) {
+        if (!photoReady ||
+            !measurementCanvas ||
+            !cameraFrame) {
+
             showPlaceholder();
             return;
         }
@@ -474,12 +336,484 @@ document.addEventListener("DOMContentLoaded", () => {
         drawPhotoCanvas();
     }
 
+
+    /* =====================================================
+       7. STOP CAMERA
+       ===================================================== */
+
+    function stopCamera() {
+        if (cameraStream) {
+            cameraStream.getTracks().forEach((track) => {
+                try {
+                    track.stop();
+                } catch (error) {
+                    console.warn(
+                        "Camera track stop warning:",
+                        error
+                    );
+                }
+            });
+
+            cameraStream = null;
+        }
+
+        if (cameraVideo) {
+            try {
+                cameraVideo.pause();
+            } catch (error) {
+                // Ignore pause errors.
+            }
+
+            cameraVideo.srcObject = null;
+            cameraVideo.style.display = "none";
+        }
+
+        if (cameraOverlay) {
+            cameraOverlay.style.display = "none";
+        }
+
+        if (stopCameraBtn) {
+            stopCameraBtn.style.display = "none";
+        }
+
+        if (photoReady) {
+            currentMode = "photo";
+            showPhotoCanvas();
+        } else {
+            currentMode = "empty";
+            showPlaceholder();
+        }
+    }
+
+
+    /* =====================================================
+       8. START CAMERA — FIXED VERSION
+       ===================================================== */
+
+    async function startCamera() {
+
+        if (cameraStarting) {
+            return;
+        }
+
+        if (!cameraVideo) {
+            setStatus(
+                "Camera video element hin argamne.",
+                "error"
+            );
+
+            alert(
+                "Camera element hin argamne. index.html keessatti cameraVideo ilaali."
+            );
+
+            return;
+        }
+
+        if (!navigator.mediaDevices ||
+            !navigator.mediaDevices.getUserMedia) {
+
+            setStatus(
+                "Browser camera hin deeggaru.",
+                "error"
+            );
+
+            showMessage(
+                measurementInstructions,
+                "Camera fayyadamuuf website HTTPS irratti banuu fi browser camera deeggaru fayyadamuu qabda.",
+                "error"
+            );
+
+            alert(
+                "Camera browser kana irratti hin deeggaramu. Chrome keessatti website HTTPS irratti bani."
+            );
+
+            return;
+        }
+
+        cameraStarting = true;
+
+        setStatus(
+            "Camera banamaa jira...",
+            "warning"
+        );
+
+        showMessage(
+            measurementInstructions,
+            "Maaloo camera banuu hanga xumuramutti eegi.",
+            ""
+        );
+
+        try {
+
+            /*
+             * Stop old camera tracks before requesting
+             * a new stream.
+             */
+
+            if (cameraStream) {
+                cameraStream.getTracks().forEach((track) => {
+                    track.stop();
+                });
+
+                cameraStream = null;
+            }
+
+            cameraVideo.pause();
+            cameraVideo.srcObject = null;
+
+            /*
+             * Hide photo view before displaying live video.
+             */
+
+            hideAllCameraViews();
+
+            if (cameraPlaceholder) {
+                cameraPlaceholder.style.display = "none";
+            }
+
+            /*
+             * First try the rear camera.
+             */
+
+            let stream;
+
+            try {
+
+                stream =
+                    await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            facingMode: {
+                                ideal: "environment"
+                            },
+                            width: {
+                                ideal: 1280
+                            },
+                            height: {
+                                ideal: 720
+                            }
+                        },
+                        audio: false
+                    });
+
+            } catch (rearCameraError) {
+
+                console.warn(
+                    "Rear camera failed. Trying default camera.",
+                    rearCameraError
+                );
+
+                /*
+                 * Fallback: request any available camera.
+                 */
+
+                stream =
+                    await navigator.mediaDevices.getUserMedia({
+                        video: true,
+                        audio: false
+                    });
+            }
+
+            cameraStream = stream;
+
+            /*
+             * Configure the video element.
+             */
+
+            cameraVideo.autoplay = true;
+            cameraVideo.playsInline = true;
+            cameraVideo.muted = true;
+
+            cameraVideo.setAttribute("autoplay", "");
+            cameraVideo.setAttribute("playsinline", "");
+            cameraVideo.setAttribute("muted", "");
+
+            cameraVideo.style.display = "block";
+            cameraVideo.style.visibility = "visible";
+            cameraVideo.style.opacity = "1";
+
+            cameraVideo.style.width = "100%";
+            cameraVideo.style.height = "100%";
+
+            cameraVideo.style.objectFit = "contain";
+            cameraVideo.style.background = "#101827";
+
+            cameraVideo.style.position = "relative";
+            cameraVideo.style.zIndex = "5";
+
+            cameraVideo.srcObject = stream;
+
+            /*
+             * Wait for the camera to produce actual video
+             * dimensions. This helps prevent a blank screen.
+             */
+
+            await new Promise((resolve, reject) => {
+
+                let completed = false;
+
+                const timeout = setTimeout(() => {
+                    finish(
+                        new Error(
+                            "Camera video hin jalqabne."
+                        )
+                    );
+                }, 12000);
+
+
+                function cleanup() {
+                    clearTimeout(timeout);
+
+                    cameraVideo.removeEventListener(
+                        "loadedmetadata",
+                        checkReady
+                    );
+
+                    cameraVideo.removeEventListener(
+                        "canplay",
+                        checkReady
+                    );
+
+                    cameraVideo.removeEventListener(
+                        "playing",
+                        checkReady
+                    );
+                }
+
+
+                function finish(error = null) {
+                    if (completed) return;
+
+                    completed = true;
+
+                    cleanup();
+
+                    if (error) {
+                        reject(error);
+                    } else {
+                        resolve();
+                    }
+                }
+
+
+                function checkReady() {
+                    if (
+                        cameraVideo.videoWidth > 0 &&
+                        cameraVideo.videoHeight > 0
+                    ) {
+                        finish();
+                    }
+                }
+
+
+                cameraVideo.addEventListener(
+                    "loadedmetadata",
+                    checkReady
+                );
+
+                cameraVideo.addEventListener(
+                    "canplay",
+                    checkReady
+                );
+
+                cameraVideo.addEventListener(
+                    "playing",
+                    checkReady
+                );
+
+                /*
+                 * Metadata may already be available.
+                 */
+
+                checkReady();
+
+            });
+
+
+            /*
+             * Start playback.
+             */
+
+            await cameraVideo.play();
+
+
+            /*
+             * Show the camera controls and overlay.
+             */
+
+            if (cameraPlaceholder) {
+                cameraPlaceholder.style.display = "none";
+            }
+
+            if (cameraOverlay) {
+                cameraOverlay.style.display = "block";
+                cameraOverlay.style.zIndex = "6";
+            }
+
+            if (stopCameraBtn) {
+                stopCameraBtn.style.display = "inline-flex";
+            }
+
+            currentMode = "camera";
+
+            setStatus(
+                "Camera hojii irra jira",
+                "active"
+            );
+
+            setText(
+                studioTitle,
+                "Live Camera"
+            );
+
+            setText(
+                studioDescription,
+                "Live camera banameera. Safartuu suuraa sirrii argachuuf reference beekamaa fayyadami."
+            );
+
+            showMessage(
+                measurementInstructions,
+                "Camera banameera. Kun live view dha; dheerina dhugaa ofumaan hin safaru. Safaruuf suuraa upload godhi ykn height calculator fayyadami.",
+                "success"
+            );
+
+            scrollToStudio();
+
+        } catch (error) {
+
+            console.error(
+                "NAOL SMART RULER CAMERA ERROR:",
+                error
+            );
+
+            /*
+             * Stop all tracks if startup fails.
+             */
+
+            if (cameraStream) {
+                cameraStream.getTracks().forEach((track) => {
+                    try {
+                        track.stop();
+                    } catch (stopError) {
+                        console.warn(stopError);
+                    }
+                });
+
+                cameraStream = null;
+            }
+
+            if (cameraVideo) {
+                cameraVideo.pause();
+                cameraVideo.srcObject = null;
+                cameraVideo.style.display = "none";
+            }
+
+            if (cameraOverlay) {
+                cameraOverlay.style.display = "none";
+            }
+
+            if (stopCameraBtn) {
+                stopCameraBtn.style.display = "none";
+            }
+
+            if (photoReady) {
+                showPhotoCanvas();
+            } else {
+                showPlaceholder();
+            }
+
+            setStatus(
+                "Camera hin banamne.",
+                "error"
+            );
+
+            let errorMessage =
+                "Camera hin banamne. Browser refresh godhiitii irra deebi'i.";
+
+            if (
+                error &&
+                error.name === "NotAllowedError"
+            ) {
+
+                errorMessage =
+                    "Camera permission dhoorkameera. Browser settings keessatti camera eeyyami.";
+
+            } else if (
+                error &&
+                error.name === "NotFoundError"
+            ) {
+
+                errorMessage =
+                    "Camera bilbila kee irratti hin argamne.";
+
+            } else if (
+                error &&
+                error.name === "NotReadableError"
+            ) {
+
+                errorMessage =
+                    "Camera app biraan fayyadamaa jira. App sana cufiitii irra deebi'i.";
+
+            } else if (
+                error &&
+                error.name === "SecurityError"
+            ) {
+
+                errorMessage =
+                    "Camera fayyadamuuf website HTTPS irratti banamuu qaba.";
+
+            } else if (
+                error &&
+                error.name === "OverconstrainedError"
+            ) {
+
+                errorMessage =
+                    "Camera setting filatame hin deeggaramu. Camera biraa yaali.";
+
+            } else if (
+                error &&
+                error.name === "AbortError"
+            ) {
+
+                errorMessage =
+                    "Camera jalqabuu addaan cite. Irra deebi'i.";
+
+            } else if (
+                error &&
+                error.name === "NotSupportedError"
+            ) {
+
+                errorMessage =
+                    "Browser video kana hin deeggaru. Chrome browser yaali.";
+            }
+
+            showMessage(
+                measurementInstructions,
+                errorMessage,
+                "error"
+            );
+
+            alert(errorMessage);
+
+        } finally {
+
+            cameraStarting = false;
+        }
+    }
+
+
+    /* =====================================================
+       9. PHOTO CANVAS
+       ===================================================== */
+
     function drawPhotoCanvas() {
-        if (!photoReady ||
+
+        if (
+            !photoReady ||
             !measurementCanvas ||
             !uploadedImage ||
             !uploadedImage.naturalWidth ||
-            !uploadedImage.naturalHeight) {
+            !uploadedImage.naturalHeight
+        ) {
             return;
         }
 
@@ -491,7 +825,11 @@ document.addEventListener("DOMContentLoaded", () => {
         const imageWidth = uploadedImage.naturalWidth;
         const imageHeight = uploadedImage.naturalHeight;
 
-        // Use original photo resolution for coordinate accuracy.
+        /*
+         * Keep the canvas resolution equal to the original
+         * photo dimensions to preserve point coordinates.
+         */
+
         if (canvas.width !== imageWidth) {
             canvas.width = imageWidth;
         }
@@ -500,14 +838,20 @@ document.addEventListener("DOMContentLoaded", () => {
             canvas.height = imageHeight;
         }
 
-        // Match the frame ratio to the original image.
-        cameraFrame.style.aspectRatio =
-            imageWidth + " / " + imageHeight;
+        if (cameraFrame) {
+            cameraFrame.style.aspectRatio =
+                imageWidth + " / " + imageHeight;
 
-        cameraFrame.style.minHeight = "0";
-        cameraFrame.style.height = "auto";
+            cameraFrame.style.minHeight = "0";
+            cameraFrame.style.height = "auto";
+        }
 
-        context.clearRect(0, 0, canvas.width, canvas.height);
+        context.clearRect(
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        );
 
         context.drawImage(
             uploadedImage,
@@ -517,16 +861,28 @@ document.addEventListener("DOMContentLoaded", () => {
             imageHeight
         );
 
-        // Draw line between selected points.
+        /*
+         * Draw the line connecting the selected points.
+         */
+
         if (photoPoints.length >= 2) {
+
             const first = photoPoints[0];
             const second = photoPoints[1];
 
             context.save();
 
             context.beginPath();
-            context.moveTo(first.x, first.y);
-            context.lineTo(second.x, second.y);
+
+            context.moveTo(
+                first.x,
+                first.y
+            );
+
+            context.lineTo(
+                second.x,
+                second.y
+            );
 
             context.lineWidth = Math.max(
                 3,
@@ -534,13 +890,18 @@ document.addEventListener("DOMContentLoaded", () => {
             );
 
             context.strokeStyle = "#00e5ff";
+
             context.stroke();
 
             context.restore();
         }
 
-        // Draw point markers.
+        /*
+         * Draw point markers.
+         */
+
         photoPoints.forEach((point, index) => {
+
             context.save();
 
             const radius = Math.max(
@@ -549,6 +910,7 @@ document.addEventListener("DOMContentLoaded", () => {
             );
 
             context.beginPath();
+
             context.arc(
                 point.x,
                 point.y,
@@ -558,7 +920,9 @@ document.addEventListener("DOMContentLoaded", () => {
             );
 
             context.fillStyle =
-                index === 0 ? "#00e5ff" : "#ffb84d";
+                index === 0
+                    ? "#00e5ff"
+                    : "#ffb84d";
 
             context.fill();
 
@@ -568,10 +932,13 @@ document.addEventListener("DOMContentLoaded", () => {
             );
 
             context.strokeStyle = "#ffffff";
+
             context.stroke();
 
             context.font =
-                "bold " + Math.max(18, imageWidth / 35) + "px Arial";
+                "bold " +
+                Math.max(18, imageWidth / 35) +
+                "px Arial";
 
             context.fillStyle = "#ffffff";
 
@@ -585,8 +952,9 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+
     /* =====================================================
-       PHOTO UPLOAD
+       10. PHOTO UPLOAD
        ===================================================== */
 
     function openPhotoPicker() {
@@ -595,22 +963,33 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+
     function handlePhotoUpload(event) {
-        const file = event.target.files &&
-                     event.target.files[0];
+
+        const file =
+            event.target.files &&
+            event.target.files[0];
 
         if (!file) return;
 
-        if (!file.type || !file.type.startsWith("image/")) {
-            setStatus("Faayiliin filatame suuraa miti.", "error");
+        if (
+            !file.type ||
+            !file.type.startsWith("image/")
+        ) {
+
+            setStatus(
+                "Faayiliin filatame suuraa miti.",
+                "error"
+            );
 
             showMessage(
                 measurementInstructions,
-                "Maaloo JPG, PNG, WEBP ykn suuraa biraa filadhu.",
+                "JPG, PNG, WEBP ykn suuraa biraa filadhu.",
                 "error"
             );
 
             event.target.value = "";
+
             return;
         }
 
@@ -618,6 +997,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         photoReady = false;
         photoPoints = [];
+
         metersPerPixel = null;
         lastMeasuredMeters = null;
 
@@ -627,18 +1007,26 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         const objectUrl = URL.createObjectURL(file);
+
         currentObjectUrl = objectUrl;
 
         if (!uploadedImage) {
-            setStatus("Image element hin argamne.", "error");
+
+            setStatus(
+                "Image element hin argamne.",
+                "error"
+            );
+
             return;
         }
 
         uploadedImage.onload = () => {
+
             photoReady = true;
             currentMode = "photo";
 
             photoPoints = [];
+
             metersPerPixel = null;
             lastMeasuredMeters = null;
 
@@ -652,25 +1040,31 @@ document.addEventListener("DOMContentLoaded", () => {
                 cameraFrame.style.height = "auto";
             }
 
-            setText(studioTitle, "Photo Measurement");
+            setText(
+                studioTitle,
+                "Photo Measurement"
+            );
 
             setText(
                 studioDescription,
-                "Suuraa irratti tuqaawwan filadhu. Reference beekamaa kalibreessuun wantoota biroo safaruu dandeessa."
+                "Suuraa irratti tuqaawwan lama filadhu. Reference beekamaa fayyadamuun wantoota biroo safari."
             );
 
             setText(resultValue, "—");
-            setText(pixelDistanceResult, "—");
             setText(startPointResult, "—");
             setText(endPointResult, "—");
+            setText(pixelDistanceResult, "—");
 
             showPhotoCanvas();
 
-            setStatus("Suuraan fe'ameera", "active");
+            setStatus(
+                "Suuraan fe'ameera",
+                "active"
+            );
 
             showMessage(
                 measurementInstructions,
-                "Jalqaba wanta dheerinni isaa duraan beekamu filadhu. Tuqaa A fi B irratti tuqi; dheerina dhugaa isaa galchiitii Calibrate tuqi. Sana booda wanta safaruu barbaaddu irratti tuqaawwan lama filadhu.",
+                "Jalqaba wanta dheerinni isaa beekamu filadhu. Tuqaa A fi B irratti tuqi; dheerina dhugaa galchiitii Calibrate tuqi.",
                 "success"
             );
 
@@ -684,9 +1078,13 @@ document.addEventListener("DOMContentLoaded", () => {
         };
 
         uploadedImage.onerror = () => {
+
             photoReady = false;
 
-            setStatus("Suuraa banuun hin danda'amne.", "error");
+            setStatus(
+                "Suuraa banuun hin danda'amne.",
+                "error"
+            );
 
             showMessage(
                 measurementInstructions,
@@ -700,28 +1098,42 @@ document.addEventListener("DOMContentLoaded", () => {
         uploadedImage.src = objectUrl;
     }
 
+
     /* =====================================================
-       PHOTO POINT SELECTION
+       11. PHOTO POINT SELECTION
        ===================================================== */
 
     function getCanvasPoint(event) {
-        if (!measurementCanvas) return null;
 
-        const rect = measurementCanvas.getBoundingClientRect();
+        if (!measurementCanvas) {
+            return null;
+        }
 
-        if (!rect.width || !rect.height) return null;
+        const rect =
+            measurementCanvas.getBoundingClientRect();
 
-        const scaleX = measurementCanvas.width / rect.width;
-        const scaleY = measurementCanvas.height / rect.height;
+        if (!rect.width || !rect.height) {
+            return null;
+        }
 
-        const x = (event.clientX - rect.left) * scaleX;
-        const y = (event.clientY - rect.top) * scaleY;
+        const scaleX =
+            measurementCanvas.width / rect.width;
+
+        const scaleY =
+            measurementCanvas.height / rect.height;
+
+        const x =
+            (event.clientX - rect.left) * scaleX;
+
+        const y =
+            (event.clientY - rect.top) * scaleY;
 
         return {
             x: Math.max(
                 0,
                 Math.min(measurementCanvas.width, x)
             ),
+
             y: Math.max(
                 0,
                 Math.min(measurementCanvas.height, y)
@@ -729,15 +1141,22 @@ document.addEventListener("DOMContentLoaded", () => {
         };
     }
 
+
     function calculatePixelDistance(pointA, pointB) {
+
         const dx = pointB.x - pointA.x;
         const dy = pointB.y - pointA.y;
 
-        return Math.sqrt(dx * dx + dy * dy);
+        return Math.sqrt(
+            dx * dx + dy * dy
+        );
     }
 
+
     function updatePointInformation() {
+
         if (photoPoints.length >= 1) {
+
             setText(
                 startPointResult,
                 "(" +
@@ -746,11 +1165,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 formatNumber(photoPoints[0].y, 1) +
                 ")"
             );
+
         } else {
-            setText(startPointResult, "—");
+
+            setText(
+                startPointResult,
+                "—"
+            );
         }
 
+
         if (photoPoints.length >= 2) {
+
             setText(
                 endPointResult,
                 "(" +
@@ -769,20 +1195,39 @@ document.addEventListener("DOMContentLoaded", () => {
                 pixelDistanceResult,
                 formatNumber(pixels, 2) + " px"
             );
+
         } else {
-            setText(endPointResult, "—");
-            setText(pixelDistanceResult, "—");
+
+            setText(
+                endPointResult,
+                "—"
+            );
+
+            setText(
+                pixelDistanceResult,
+                "—"
+            );
         }
     }
 
+
     function handleCanvasClick(event) {
-        if (!photoReady || currentMode !== "photo") {
+
+        if (
+            !photoReady ||
+            currentMode !== "photo"
+        ) {
             return;
         }
 
         const point = getCanvasPoint(event);
 
         if (!point) return;
+
+        /*
+         * After two points have been selected,
+         * the next click starts a new pair.
+         */
 
         if (photoPoints.length >= 2) {
             photoPoints = [];
@@ -791,60 +1236,78 @@ document.addEventListener("DOMContentLoaded", () => {
         photoPoints.push(point);
 
         drawPhotoCanvas();
+
         updatePointInformation();
 
         if (photoPoints.length === 1) {
+
             showMessage(
                 measurementInstructions,
                 "Tuqaa A filatameera. Amma tuqaa B filadhu.",
                 ""
             );
+
         } else {
+
             showMessage(
                 measurementInstructions,
-                "Tuqaawwan A fi B filatamaniiru. Reference beekamaa kalibreessuuf dheerina dhugaa galchiitii Calibrate tuqi.",
+                "Tuqaawwan A fi B filatamaniiru. Calibration ykn measurement itti fufi.",
                 "success"
             );
         }
     }
 
+
     function clearPhotoPoints() {
+
         photoPoints = [];
 
         drawPhotoCanvas();
+
         updatePointInformation();
 
-        setText(pixelDistanceResult, "—");
+        setText(
+            pixelDistanceResult,
+            "—"
+        );
 
         showMessage(
             measurementInstructions,
+
             metersPerPixel !== null
                 ? "Calibration jira. Amma wanta safaruu barbaaddu irratti tuqaawwan lama filadhu."
                 : "Tuqaawwan lama suuraa irratti filadhu.",
+
             ""
         );
     }
 
+
     /* =====================================================
-       CALIBRATION AND PHOTO MEASUREMENT
+       12. CALIBRATION AND MEASUREMENT
        ===================================================== */
 
     function handleCalibrationOrMeasurement() {
+
         if (!photoReady) {
+
             showMessage(
                 calibrationMessage,
                 "Jalqaba suuraa upload godhi.",
                 "error"
             );
+
             return;
         }
 
         if (photoPoints.length !== 2) {
+
             showMessage(
                 calibrationMessage,
-                "Safaruuf suuraa irratti tuqaawwan lama filadhu.",
+                "Suuraa irratti tuqaawwan lama filadhu.",
                 "error"
             );
+
             return;
         }
 
@@ -853,96 +1316,129 @@ document.addEventListener("DOMContentLoaded", () => {
             photoPoints[1]
         );
 
-        if (!Number.isFinite(pixels) || pixels <= 0) {
+        if (
+            !Number.isFinite(pixels) ||
+            pixels <= 0
+        ) {
+
             showMessage(
                 calibrationMessage,
                 "Tuqaawwan lamaan bakka adda addaa irratti filadhu.",
                 "error"
             );
+
             return;
         }
 
         /*
-         * First use:
-         * Calibrate using a known reference object.
-         *
-         * Later use:
-         * Measure the target object with the saved scale.
+         * FIRST STAGE:
+         * Calibrate with an object whose real length is known.
          */
 
         if (metersPerPixel === null) {
+
             const knownLength = Number(
-                referenceLength ? referenceLength.value : 0
+                referenceLength
+                    ? referenceLength.value
+                    : 0
             );
 
             const unit = referenceUnit
                 ? String(referenceUnit.value || "m").toLowerCase()
                 : "m";
 
-            if (!Number.isFinite(knownLength) || knownLength <= 0) {
+            if (
+                !Number.isFinite(knownLength) ||
+                knownLength <= 0
+            ) {
+
                 showMessage(
                     calibrationMessage,
                     "Dheerina reference dhugaa sirrii galchi.",
                     "error"
                 );
+
                 return;
             }
 
-            const knownMeters = unitToMeters(knownLength, unit);
+            const knownMeters = unitToMeters(
+                knownLength,
+                unit
+            );
 
-            if (!Number.isFinite(knownMeters) || knownMeters <= 0) {
+            if (
+                !Number.isFinite(knownMeters) ||
+                knownMeters <= 0
+            ) {
+
                 showMessage(
                     calibrationMessage,
                     "Unit filatame sirrii miti.",
                     "error"
                 );
+
                 return;
             }
 
-            metersPerPixel = knownMeters / pixels;
+            metersPerPixel =
+                knownMeters / pixels;
 
             displayMeasurement(
                 knownMeters,
-                "Kun dheerina reference ati galchite dha; amma wanta biraa safaruu dandeessa."
+                "Dheerina reference ati galchite. Amma wanta biraa safaruu dandeessa."
             );
 
             showMessage(
                 calibrationMessage,
-                "Calibration milkaa'eera. Amma wanta safaruu barbaaddu irratti tuqaawwan lama filadhu.",
+                "Calibration milkaa'eera. Amma wanta safaruu barbaaddu irratti tuqaawwan lama haaraa filadhu.",
                 "success"
             );
 
             photoPoints = [];
 
             drawPhotoCanvas();
+
             updatePointInformation();
 
             showMessage(
                 measurementInstructions,
-                "Calibration xumurameera. Amma wanta safaruu barbaaddu irratti tuqaa jalqabaa fi dhumaa filadhu; achiis button Calibrate/Measure tuqi.",
+                "Calibration xumurameera. Amma wanta safaruu barbaaddu irratti tuqaa jalqabaa fi dhumaa filadhu; sana booda button Calibrate tuqi.",
                 "success"
             );
 
-            setStatus("Calibration xumurameera", "active");
+            setStatus(
+                "Calibration xumurameera",
+                "active"
+            );
 
             return;
         }
 
-        // Measurement after calibration.
-        const measuredMeters = pixels * metersPerPixel;
+        /*
+         * SECOND STAGE:
+         * Measure another object using the calibrated scale.
+         */
 
-        if (!Number.isFinite(measuredMeters) || measuredMeters <= 0) {
+        const measuredMeters =
+            pixels * metersPerPixel;
+
+        if (
+            !Number.isFinite(measuredMeters) ||
+            measuredMeters <= 0
+        ) {
+
             showMessage(
                 calibrationMessage,
                 "Safartuu argame sirrii miti. Irra deebi'i.",
                 "error"
             );
+
             return;
         }
 
         displayMeasurement(
             measuredMeters,
-            "Tilmaama kalibreessii irratti hundaa'e. Sirrummaan fageenya, perspective fi reference irratti hundaa'a."
+            "Tilmaama calibration irratti hundaa'e. Sirrummaan fageenya fi perspective irratti hundaa'a."
         );
 
         showMessage(
@@ -951,26 +1447,35 @@ document.addEventListener("DOMContentLoaded", () => {
             "success"
         );
 
-        setStatus("Safartuun xumurameera", "active");
+        setStatus(
+            "Safartuun xumurameera",
+            "active"
+        );
     }
 
+
     /* =====================================================
-       HEIGHT CALCULATOR
-       Formula:
-       height = observerHeight + distance * tan(angle)
+       13. HEIGHT CALCULATOR
        ===================================================== */
 
     function calculateHeight() {
+
         const distance = Number(
-            horizontalDistance ? horizontalDistance.value : NaN
+            horizontalDistance
+                ? horizontalDistance.value
+                : NaN
         );
 
         const angleDegrees = Number(
-            viewingAngle ? viewingAngle.value : NaN
+            viewingAngle
+                ? viewingAngle.value
+                : NaN
         );
 
         const eyeHeight = Number(
-            observerHeight ? observerHeight.value : NaN
+            observerHeight
+                ? observerHeight.value
+                : NaN
         );
 
         if (
@@ -978,42 +1483,54 @@ document.addEventListener("DOMContentLoaded", () => {
             !Number.isFinite(angleDegrees) ||
             !Number.isFinite(eyeHeight)
         ) {
+
             showMessage(
                 heightCalculatorMessage,
                 "Lakkoofsa sirrii hunda galchi.",
                 "error"
             );
+
             return;
         }
 
         if (distance <= 0) {
+
             showMessage(
                 heightCalculatorMessage,
-                "Fageenyi nama irraa gara wantaatti 0 ol ta'uu qaba.",
+                "Fageenyi 0 ol ta'uu qaba.",
                 "error"
             );
+
             return;
         }
 
-        if (angleDegrees < 0 || angleDegrees >= 89.9) {
+        if (
+            angleDegrees < 0 ||
+            angleDegrees >= 89.9
+        ) {
+
             showMessage(
                 heightCalculatorMessage,
                 "Angle 0° hanga 89.9° gidduu galchi.",
                 "error"
             );
+
             return;
         }
 
         if (eyeHeight < 0) {
+
             showMessage(
                 heightCalculatorMessage,
-                "Olka'iinsi camera ykn ijaa 0 gadi ta'uu hin qabu.",
+                "Olka'iinsi camera 0 gadi ta'uu hin qabu.",
                 "error"
             );
+
             return;
         }
 
-        const radians = angleDegrees * Math.PI / 180;
+        const radians =
+            angleDegrees * Math.PI / 180;
 
         const verticalDifference =
             distance * Math.tan(radians);
@@ -1021,12 +1538,17 @@ document.addEventListener("DOMContentLoaded", () => {
         const totalHeight =
             eyeHeight + verticalDifference;
 
-        if (!Number.isFinite(totalHeight) || totalHeight < 0) {
+        if (
+            !Number.isFinite(totalHeight) ||
+            totalHeight < 0
+        ) {
+
             showMessage(
                 heightCalculatorMessage,
                 "Bu'aan herregaa sirrii miti.",
                 "error"
             );
+
             return;
         }
 
@@ -1041,43 +1563,65 @@ document.addEventListener("DOMContentLoaded", () => {
 
         showMessage(
             heightCalculatorMessage,
-            "Tilmaamni xumurameera. Angle fi fageenya sirrii galchuun bu'aa fooyyessa.",
+            "Tilmaamni xumurameera. Bu'aan distance fi angle sirrii galchuu irratti hundaa'a.",
             "success"
         );
     }
 
+
     /* =====================================================
-       UNIT CONVERTER
+       14. UNIT CONVERTER
        ===================================================== */
 
     function convertUnits() {
-        if (!convertValue || !convertFrom ||
-            !convertTo || !conversionResult) {
+
+        if (
+            !convertValue ||
+            !convertFrom ||
+            !convertTo ||
+            !conversionResult
+        ) {
             return;
         }
 
         const value = Number(convertValue.value);
 
-        const from = String(convertFrom.value || "m")
-            .toLowerCase();
+        const from = String(
+            convertFrom.value || "m"
+        ).toLowerCase();
 
-        const to = String(convertTo.value || "cm")
-            .toLowerCase();
+        const to = String(
+            convertTo.value || "cm"
+        ).toLowerCase();
 
         if (!Number.isFinite(value)) {
+
             conversionResult.textContent =
-                "Maaloo lakkoofsa sirrii galchi.";
+                "Lakkoofsa sirrii galchi.";
+
             return;
         }
 
-        if (!UNIT_TO_METERS[from] || !UNIT_TO_METERS[to]) {
+        if (
+            !UNIT_TO_METERS[from] ||
+            !UNIT_TO_METERS[to]
+        ) {
+
             conversionResult.textContent =
                 "Unit filatame hin beekamne.";
+
             return;
         }
 
-        const meters = unitToMeters(value, from);
-        const converted = metersToUnit(meters, to);
+        const meters = unitToMeters(
+            value,
+            from
+        );
+
+        const converted = metersToUnit(
+            meters,
+            to
+        );
 
         conversionResult.textContent =
             formatNumber(value, 6) +
@@ -1087,8 +1631,12 @@ document.addEventListener("DOMContentLoaded", () => {
             " " + UNIT_LABELS[to];
     }
 
+
     function swapConverterUnits() {
-        if (!convertFrom || !convertTo) return;
+
+        if (!convertFrom || !convertTo) {
+            return;
+        }
 
         const oldFrom = convertFrom.value;
 
@@ -1098,15 +1646,17 @@ document.addEventListener("DOMContentLoaded", () => {
         convertUnits();
     }
 
+
     /* =====================================================
-       TOOL CARD SELECTION
+       15. TOOL CARD CONTENT
        ===================================================== */
 
     const TOOL_CONTENT = {
+
         human: {
             title: "Human Height",
             description:
-                "Dheerina namaa suuraa kalibreessame ykn angle fi fageenya fayyadamuun tilmaami.",
+                "Dheerina namaa reference calibration ykn angle fi fageenya fayyadamuun tilmaami.",
             instructions:
                 "Dheerina namaa suuraa irratti safaruuf reference beekamaa barbaachisa. Yookaan distance fi angle calculator fayyadami."
         },
@@ -1116,7 +1666,7 @@ document.addEventListener("DOMContentLoaded", () => {
             description:
                 "Olka'iinsa muka angle fi fageenya irraa tilmaami.",
             instructions:
-                "Fageenya muka irraa fi angle gara fiixee mukaatti ilaaltu galchi. Bu'aan tilmaama."
+                "Fageenya muka irraa fi angle gara fiixee mukaatti ilaaltu galchi."
         },
 
         building: {
@@ -1124,7 +1674,7 @@ document.addEventListener("DOMContentLoaded", () => {
             description:
                 "Olka'iinsa gamoo fageenya fi angle fayyadamuun tilmaami.",
             instructions:
-                "Fageenya gamoo irraa fi angle sirrii galchi. Safartuun angle fi fageenya irratti hundaa'a."
+                "Fageenya gamoo irraa fi angle sirrii galchi."
         },
 
         object: {
@@ -1140,7 +1690,7 @@ document.addEventListener("DOMContentLoaded", () => {
             description:
                 "Fageenya fi angle irraa garaagarummaa olka'iinsaa herregi.",
             instructions:
-                "Distance, viewing angle fi camera height galchi. Kun tilmaama trigonometrikii dha; GPS ykn laser distance miti."
+                "Distance, viewing angle fi camera height galchi. Kun tilmaama herregaa dha; GPS ykn laser distance miti."
         },
 
         photo: {
@@ -1152,15 +1702,26 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     };
 
+
     function selectTool(tool) {
-        if (!TOOL_CONTENT[tool]) return;
+
+        if (!TOOL_CONTENT[tool]) {
+            return;
+        }
 
         currentTool = tool;
 
         const content = TOOL_CONTENT[tool];
 
-        setText(studioTitle, content.title);
-        setText(studioDescription, content.description);
+        setText(
+            studioTitle,
+            content.title
+        );
+
+        setText(
+            studioDescription,
+            content.description
+        );
 
         showMessage(
             measurementInstructions,
@@ -1168,69 +1729,121 @@ document.addEventListener("DOMContentLoaded", () => {
             ""
         );
 
-        if (tool === "distance" ||
+        if (
+            tool === "distance" ||
             tool === "human" ||
             tool === "tree" ||
-            tool === "building") {
+            tool === "building"
+        ) {
 
-            const calculator = horizontalDistance
-                ? horizontalDistance.closest("section, .calculator-card, .tool-panel")
-                : null;
+            const calculator =
+                horizontalDistance
+                    ? horizontalDistance.closest(
+                        "section, .calculator-card, .tool-panel"
+                    )
+                    : null;
 
             if (calculator) {
+
                 calculator.scrollIntoView({
                     behavior: "smooth",
                     block: "center"
                 });
+
             } else {
+
                 scrollToStudio();
             }
+
         } else {
+
             scrollToStudio();
         }
     }
 
+
     /* =====================================================
-       EVENT LISTENERS
+       16. CAMERA BUTTON EVENTS
        ===================================================== */
 
     if (startCameraBtn) {
-        startCameraBtn.addEventListener("click", startCamera);
+        startCameraBtn.addEventListener(
+            "click",
+            startCamera
+        );
     }
 
     if (cameraPlaceholderBtn) {
-        cameraPlaceholderBtn.addEventListener("click", startCamera);
+        cameraPlaceholderBtn.addEventListener(
+            "click",
+            startCamera
+        );
     }
+
+
+    /* =====================================================
+       17. STOP CAMERA BUTTON
+       ===================================================== */
 
     if (stopCameraBtn) {
-        stopCameraBtn.addEventListener("click", () => {
-            stopCamera();
 
-            setStatus("Camera cufameera", "ready");
+        stopCameraBtn.addEventListener(
+            "click",
+            () => {
 
-            showMessage(
-                measurementInstructions,
-                photoReady
-                    ? "Camera cufameera. Suuraa irratti safaruu itti fufuu dandeessa."
-                    : "Camera cufameera. Camera irra deebi'ii banuu ykn suuraa upload gochuu dandeessa.",
-                ""
-            );
-        });
+                stopCamera();
+
+                setStatus(
+                    "Camera cufameera",
+                    "ready"
+                );
+
+                showMessage(
+                    measurementInstructions,
+
+                    photoReady
+                        ? "Camera cufameera. Suuraa irratti safaruu itti fufuu dandeessa."
+                        : "Camera cufameera. Irra deebi'ii banuu ykn suuraa upload gochuu dandeessa.",
+
+                    ""
+                );
+            }
+        );
     }
 
+
+    /* =====================================================
+       18. PHOTO BUTTON EVENTS
+       ===================================================== */
+
     if (uploadTriggerBtn) {
-        uploadTriggerBtn.addEventListener("click", openPhotoPicker);
+        uploadTriggerBtn.addEventListener(
+            "click",
+            openPhotoPicker
+        );
     }
 
     if (changePhotoBtn) {
-        changePhotoBtn.addEventListener("click", openPhotoPicker);
+        changePhotoBtn.addEventListener(
+            "click",
+            openPhotoPicker
+        );
     }
 
     if (photoInput) {
-        photoInput.addEventListener("change", handlePhotoUpload);
+        photoInput.addEventListener(
+            "change",
+            handlePhotoUpload
+        );
     }
 
+
+    /* =====================================================
+       19. PHOTO CANVAS EVENTS
+       ===================================================== */
+
     if (measurementCanvas) {
+
         measurementCanvas.addEventListener(
             "pointerdown",
             handleCanvasClick
@@ -1238,6 +1851,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (clearPointsBtn) {
+
         clearPointsBtn.addEventListener(
             "click",
             clearPhotoPoints
@@ -1245,32 +1859,57 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (calibrateBtn) {
+
         calibrateBtn.addEventListener(
             "click",
             handleCalibrationOrMeasurement
         );
     }
 
+
+    /* =====================================================
+       20. HEIGHT CALCULATOR EVENTS
+       ===================================================== */
+
     if (calculateHeightBtn) {
+
         calculateHeightBtn.addEventListener(
             "click",
             calculateHeight
         );
     }
 
+
+    /* =====================================================
+       21. UNIT CONVERTER EVENTS
+       ===================================================== */
+
     if (convertValue) {
-        convertValue.addEventListener("input", convertUnits);
+
+        convertValue.addEventListener(
+            "input",
+            convertUnits
+        );
     }
 
     if (convertFrom) {
-        convertFrom.addEventListener("change", convertUnits);
+
+        convertFrom.addEventListener(
+            "change",
+            convertUnits
+        );
     }
 
     if (convertTo) {
-        convertTo.addEventListener("change", convertUnits);
+
+        convertTo.addEventListener(
+            "change",
+            convertUnits
+        );
     }
 
     if (swapUnitsBtn) {
+
         swapUnitsBtn.addEventListener(
             "click",
             swapConverterUnits
@@ -1278,65 +1917,108 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (resultUnit) {
+
         resultUnit.addEventListener(
             "change",
             refreshDisplayedMeasurement
         );
     }
 
-    /* =====================================================
-       TOOL CARDS
-       ===================================================== */
-
-    document.querySelectorAll("[data-tool]").forEach((card) => {
-        card.addEventListener("click", () => {
-            const tool = card.getAttribute("data-tool");
-
-            selectTool(tool);
-        });
-    });
 
     /* =====================================================
-       KEYBOARD ACCESSIBILITY
+       22. TOOL CARD EVENTS
        ===================================================== */
 
-    document.querySelectorAll("[data-tool]").forEach((card) => {
-        if (!card.hasAttribute("tabindex")) {
-            card.setAttribute("tabindex", "0");
-        }
+    document.querySelectorAll("[data-tool]").forEach(
+        (card) => {
 
-        card.addEventListener("keydown", (event) => {
-            if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
+            card.addEventListener(
+                "click",
+                () => {
 
-                selectTool(
-                    card.getAttribute("data-tool")
-                );
+                    const tool =
+                        card.getAttribute("data-tool");
+
+                    selectTool(tool);
+                }
+            );
+
+            if (!card.hasAttribute("tabindex")) {
+                card.setAttribute("tabindex", "0");
             }
-        });
-    });
 
-    /* =====================================================
-       WINDOW RESIZE
-       ===================================================== */
+            card.addEventListener(
+                "keydown",
+                (event) => {
 
-    window.addEventListener("resize", () => {
-        if (photoReady && currentMode === "photo") {
-            drawPhotoCanvas();
+                    if (
+                        event.key === "Enter" ||
+                        event.key === " "
+                    ) {
+
+                        event.preventDefault();
+
+                        selectTool(
+                            card.getAttribute("data-tool")
+                        );
+                    }
+                }
+            );
         }
-    });
+    );
+
 
     /* =====================================================
-       PAGE INITIALIZATION
+       23. RESIZE HANDLER
        ===================================================== */
 
-    if (currentYear) {
-        currentYear.textContent = new Date().getFullYear();
-    }
+    window.addEventListener(
+        "resize",
+        () => {
+
+            if (
+                photoReady &&
+                currentMode === "photo"
+            ) {
+
+                drawPhotoCanvas();
+            }
+        }
+    );
+
+
+    /* =====================================================
+       24. CLEAN UP CAMERA WHEN LEAVING
+       ===================================================== */
+
+    window.addEventListener(
+        "pagehide",
+        () => {
+
+            if (cameraStream) {
+
+                cameraStream.getTracks().forEach(
+                    (track) => {
+                        track.stop();
+                    }
+                );
+
+                cameraStream = null;
+            }
+        }
+    );
+
+
+    /* =====================================================
+       25. INITIALIZE WEBSITE
+       ===================================================== */
 
     showPlaceholder();
 
-    setStatus("System ready", "ready");
+    setStatus(
+        "System ready",
+        "ready"
+    );
 
     setText(resultValue, "—");
     setText(startPointResult, "—");
@@ -1347,15 +2029,23 @@ document.addEventListener("DOMContentLoaded", () => {
         heightCalculatorResult.style.display = "block";
     }
 
-    if (convertValue && convertFrom && convertTo) {
+    if (
+        convertValue &&
+        convertFrom &&
+        convertTo
+    ) {
+
         convertUnits();
     }
 
     showMessage(
         measurementInstructions,
-        "Jalqabuuf camera bani ykn suuraa upload godhi. Safartuu suuraa sirrii argachuuf reference dheerinni isaa beekamu barbaachisa.",
+        "Jalqabuuf camera bani ykn suuraa upload godhi. Camera browser keessatti eeyyamamuu qaba.",
         ""
     );
 
-    console.log("NAOL 3D SMART RULER initialized successfully.");
+    console.log(
+        "NAOL 3D SMART RULER initialized successfully."
+    );
+
 });
