@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta
+        name="theme-color"
+        content="#080c18"
+    >
+
+    <meta
+        name="description"
+        content="NAOL 3D SMART RULER - Camera and photo based measurement tools."
+    >
+
+    <title>NAOL 3D SMART RULER</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div class="app-shell">
+
+    <!-- HEADER -->
+
+    <header class="topbar">
+
+        <a class="brand" href="#" aria-label="NAOL Smart Ruler Home">
+
+            <div class="brand-logo">
+                <span>Ｎ</span>
+                <i></i>
+            </div>
+
+            <div class="brand-text">
+                <h1>NAOL</h1>
+                <p>3D SMART RULER</p>
+            </div>
+
+        </a>
+
+        <div class="system-status">
+            <span class="status-dot"></span>
+            <span id="systemStatus">READY TO MEASURE</span>
+        </div>
+
+    </header>
+
+
+    <!-- HERO -->
+
+    <main>
+
+        <section class="hero">
+
+            <div class="hero-content">
+
+                <div class="eyebrow">
+                    <span class="eyebrow-icon">✦</span>
+                    SMART MEASUREMENT TECHNOLOGY
+                </div>
+
+                <h2>
+                    Measure the
+                    <span class="gradient-text">World.</span>
+                </h2>
+
+                <p class="hero-description">
+                    Measure people, trees, buildings and everyday
+                    objects using your phone camera or a photo.
+                </p>
+
+                <div class="hero-actions">
+
+                    <button
+                        type="button"
+                        class="primary-button"
+                        id="startCameraBtn"
+                    >
+                        <span>▣</span>
+                        Open Live Camera
+                    </button>
+
+                    <button
+                        type="button"
+                        class="secondary-button"
+                        id="uploadTriggerBtn"
+                    >
+                        <span>↥</span>
+                        Upload Photo
+                    </button>
+
+                    <input
+                        type="file"
+                        id="photoInput"
+                        accept="image/*"
+                        hidden
+                    >
+
+                </div>
+
+                <p class="security-note">
+                    <span>●</span>
+                    Camera access requires your permission and HTTPS.
+                </p>
+
+            </div>
+
+            <div class="hero-visual" aria-hidden="true">
+
+                <div class="orbit orbit-one"></div>
+                <div class="orbit orbit-two"></div>
+                <div class="orbit orbit-three"></div>
+
+                <div class="measure-object">
+
+                    <div class="object-top"></div>
+
+                    <div class="object-body">
+
+                        <span class="measure-line"></span>
+
+                        <span class="measure-tick tick-one"></span>
+                        <span class="measure-tick tick-two"></span>
+                        <span class="measure-tick tick-three"></span>
+                        <span class="measure-tick tick-four"></span>
+                        <span class="measure-tick tick-five"></span>
+
+                    </div>
+
+                    <div class="object-base"></div>
+
+                </div>
+
+                <div class="floating-label label-top">
+                    <span>↕</span>
+                    <div>
+                        <small>MEASUREMENT</small>
+                        <strong>3D READY</strong>
+                    </div>
+                </div>
+
+                <div class="floating-label label-bottom">
+                    <span>◎</span>
+                    <div>
+                        <small>PRECISION MODE</small>
+                        <strong>SMART TOOLS</strong>
+                    </div>
+                </div>
+
+                <div class="visual-cross cross-one">+</div>
+                <div class="visual-cross cross-two">+</div>
+                <div class="visual-cross cross-three">+</div>
+
+            </div>
+
+        </section>
+
+
+        <!-- MAIN WORKSPACE -->
+
+        <section class="workspace-section">
+
+            <div class="section-heading">
+
+                <div>
+                    <span class="section-kicker">YOUR WORKSPACE</span>
+
+                    <h2>Measurement Studio</h2>
+
+                    <p>
+                        Choose a measurement tool to get started.
+                    </p>
+                </div>
+
+                <div class="live-badge">
+                    <span class="status-dot"></span>
+                    INTERACTIVE
+                </div>
+
+            </div>
+
+
+            <!-- TOOL CARDS -->
+
+            <div class="tool-grid">
+
+                <button
+                    type="button"
+                    class="tool-card"
+                    data-tool="human"
+                >
+
+                    <span class="tool-icon human-icon">♙</span>
+
+                    <span class="tool-title">Human Height</span>
+
+                    <span class="tool-description">
+                        Measure a person's height.
+                    </span>
+
+                    <span class="tool-footer">
+                        OPEN TOOL <span>↗</span>
+                    </span>
+
+                </button>
+
+
+                <button
+                    type="button"
+                    class="tool-card"
+                    data-tool="tree"
+                >
+
+                    <span class="tool-icon tree-icon">♧</span>
+
+                    <span class="tool-title">Tree Height</span>
+
+                    <span class="tool-description">
+                        Estimate the height of a tree.
+                    </span>
+
+                    <span class="tool-footer">
+                        OPEN TOOL <span>↗</span>
+                    </span>
+
+                </button>
+
+
+                <button
+                    type="button"
+                    class="tool-card"
+                    data-tool="building"
+                >
+
+                    <span class="tool-icon building-icon">▥</span>
+
+                    <span class="tool-title">Building Height</span>
+
+                    <span class="tool-description">
+                        Estimate building height.
+                    </span>
+
+                    <span class="tool-footer">
+                        OPEN TOOL <span>↗</span>
+                    </span>
+
+                </button>
+
+
+                <button
+                    type="button"
+                    class="tool-card"
+                    data-tool="object"
+                >
+
+                    <span class="tool-icon object-icon">◇</span>
+
+                    <span class="tool-title">Object Length</span>
+
+                    <span class="tool-description">
+                        Measure objects in a photo.
+                    </span>
+
+                    <span class="tool-footer">
+                        OPEN TOOL <span>↗</span>
+                    </span>
+
+                </button>
+
+
+                <button
+                    type="button"
+                    class="tool-card"
+                    data-tool="distance"
+                >
+
+                    <span class="tool-icon distance-icon">⌁</span>
+
+                    <span class="tool-title">Distance Meter</span>
+
+                    <span class="tool-description">
+                        Calculate distance with known inputs.
+                    </span>
+
+                    <span class="tool-footer">
+                        OPEN TOOL <span>↗</span>
+                    </span>
+
+                </button>
+
+
+                <button
+                    type="button"
+                    class="tool-card"
+                    data-tool="photo"
+                >
+
+                    <span class="tool-icon photo-icon">▧</span>
+
+                    <span class="tool-title">Photo Measure</span>
+
+                    <span class="tool-description">
+                        Select two points in a photo.
+                    </span>
+
+                    <span class="tool-footer">
+                        OPEN TOOL <span>↗</span>
+                    </span>
+
+                </button>
+
+            </div>
+
+        </section>
+
+
+        <!-- CAMERA AND PHOTO STUDIO -->
+
+        <section
+            class="studio-section"
+            id="measurementStudio"
+        >
+
+            <div class="section-heading studio-heading">
+
+                <div>
+                    <span class="section-kicker">CAMERA WORKSPACE</span>
+
+                    <h2 id="studioTitle">Live Measurement Studio</h2>
+
+                    <p id="studioDescription">
+                        Open the camera or upload an image to begin.
+                    </p>
+                </div>
+
+                <button
+                    type="button"
+                    class="small-button"
+                    id="stopCameraBtn"
+                >
+                    Stop Camera
+                </button>
+
+            </div>
+
+
+            <!-- CAMERA VIEW -->
+
+            <div class="camera-frame" id="cameraFrame">
+
+                <div class="camera-placeholder" id="cameraPlaceholder">
+
+                    <div class="camera-placeholder-icon">◎</div>
+
+                    <h3>Your Measurement View</h3>
+
+                    <p>
+                        Start the camera or upload a photo to display
+                        your measurement workspace here.
+                    </p>
+
+                    <button
+                        type="button"
+                        class="primary-button"
+                        id="cameraPlaceholderBtn"
+                    >
+                        Start Camera
+                    </button>
+
+                </div>
+
+                <video
+                    id="cameraVideo"
+                    autoplay
+                    muted
+                    playsinline
+                    hidden
+                ></video>
+
+                <img
+                    id="uploadedImage"
+                    alt="Image selected for measurement"
+                    hidden
+                >
+
+                <canvas
+                    id="measurementCanvas"
+                    aria-label="Photo measurement selection area"
+                    hidden
+                ></canvas>
+
+                <div class="camera-overlay" id="cameraOverlay" hidden>
+
+                    <div class="camera-top-label">
+                        <span class="status-dot"></span>
+                        CAMERA ACTIVE
+                    </div>
+
+                    <div class="camera-center-reticle">
+                        <span></span>
+                    </div>
+
+                    <div class="camera-bottom-label">
+                        Select measurement points when using a photo.
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- PHOTO ACTIONS -->
+
+            <div class="photo-toolbar">
+
+                <button
+                    type="button"
+                    class="secondary-button"
+                    id="changePhotoBtn"
+                >
+                    ↥ Choose Photo
+                </button>
+
+                <button
+                    type="button"
+                    class="secondary-button"
+                    id="clearPointsBtn"
+                >
+                    ↺ Reset Points
+                </button>
+
+            </div>
+
+
+            <!-- MEASUREMENT INSTRUCTIONS -->
+
+            <div class="instruction-panel">
+
+                <div class="instruction-icon">ⓘ</div>
+
+                <div>
+                    <h3>How to measure</h3>
+
+                    <p id="measurementInstructions">
+                        Upload a photo, then select two points:
+                        the start and end of the object you want
+                        to measure. Enter a known reference length
+                        to calculate an estimated real-world length.
+                    </p>
+                </div>
+
+            </div>
+
+
+            <!-- CALIBRATION -->
+
+            <div class="calibration-card">
+
+                <div class="calibration-heading">
+
+                    <div>
+                        <span class="section-kicker">
+                            REFERENCE CALIBRATION
+                        </span>
+
+                        <h3>Set a Known Length</h3>
+
+                        <p>
+                            Required to convert photo pixels into
+                            real-world measurement units.
+                        </p>
+                    </div>
+
+                    <span class="calibration-symbol">⌁</span>
+
+                </div>
+
+
+                <div class="calibration-fields">
+
+                    <div class="field-group">
+
+                        <label for="referenceLength">
+                            Known reference length
+                        </label>
+
+                        <input
+                            type="number"
+                            id="referenceLength"
+                            min="0.001"
+                            step="any"
+                            placeholder="Example: 100"
+                            inputmode="decimal"
+                        >
+
+                    </div>
+
+
+                    <div class="field-group">
+
+                        <label for="referenceUnit">
+                            Reference unit
+                        </label>
+
+                        <select id="referenceUnit">
+
+                            <option value="mm">Millimeters (mm)</option>
+
+                            <option value="cm" selected>
+                                Centimeters (cm)
+                            </option>
+
+                            <option value="m">Meters (m)</option>
+
+                            <option value="ft">Feet (ft)</option>
+
+                            <option value="in">Inches (in)</option>
+
+                        </select>
+
+                    </div>
+
+                </div>
+
+
+                <div class="calibration-actions">
+
+                    <button
+                        type="button"
+                        class="primary-button"
+                        id="calibrateBtn"
+                    >
+                        Calculate Measurement
+                    </button>
+
+                </div>
+
+                <p
+                    class="form-message"
+                    id="calibrationMessage"
+                    role="status"
+                    aria-live="polite"
+                ></p>
+
+            </div>
+
+
+            <!-- RESULTS -->
+
+            <div class="results-card">
+
+                <div class="results-header">
+
+                    <div>
+                        <span class="section-kicker">
+                            MEASUREMENT RESULTS
+                        </span>
+
+                        <h3>Your Results</h3>
+                    </div>
+
+                    <span class="results-icon">↕</span>
+
+                </div>
+
+
+                <div class="result-main">
+
+                    <span class="result-label">
+                        CALCULATED LENGTH
+                    </span>
+
+                    <div class="result-number">
+
+                        <strong id="resultValue">—</strong>
+
+                        <select
+                            id="resultUnit"
+                            aria-label="Result measurement unit"
+                        >
+                            <option value="mm">mm</option>
+                            <option value="cm" selected>cm</option>
+                            <option value="m">m</option>
+                            <option value="ft">ft</option>
+                            <option value="in">in</option>
+                        </select>
+
+                    </div>
+
+                    <p id="resultExplanation">
+                        No measurement calculated yet.
+                    </p>
+
+                </div>
+
+
+                <div class="result-details">
+
+                    <div class="result-detail">
+
+                        <span>Start point</span>
+
+                        <strong id="startPointResult">—</strong>
+
+                    </div>
+
+                    <div class="result-detail">
+
+                        <span>End point</span>
+
+                        <strong id="endPointResult">—</strong>
+
+                    </div>
+
+                    <div class="result-detail">
+
+                        <span>Photo distance</span>
+
+                        <strong id="pixelDistanceResult">—</strong>
+
+                    </div>
+
+                </div>
+
+
+                <div class="accuracy-notice">
+
+                    <span>⚠</span>
+
+                    <p>
+                        A calibrated photo measurement is an estimate.
+                        Perspective, camera angle and object depth
+                        can affect accuracy. This result is not
+                        automatically a verified 3D measurement.
+                    </p>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- DISTANCE CALCULATOR -->
+
+        <section class="distance-section">
+
+            <div class="section-heading">
+
+                <div>
+                    <span class="section-kicker">SMART CALCULATOR</span>
+
+                    <h2>Distance & Height Calculator</h2>
+
+                    <p>
+                        Calculate height using a known horizontal
+                        distance and a measured viewing angle.
+                    </p>
+                </div>
+
+            </div>
+
+
+            <div class="calculator-card">
+
+                <div class="field-group">
+
+                    <label for="horizontalDistance">
+                        Horizontal distance to object (meters)
+                    </label>
+
+                    <input
+                        type="number"
+                        id="horizontalDistance"
+                        min="0.001"
+                        step="any"
+                        placeholder="Example: 10"
+                        inputmode="decimal"
+                    >
+
+                </div>
+
+
+                <div class="field-group">
+
+                    <label for="viewingAngle">
+                        Elevation angle (degrees)
+                    </label>
+
+                    <input
+                        type="number"
+                        id="viewingAngle"
+                        min="0.01"
+                        max="89.99"
+                        step="any"
+                        placeholder="Example: 45"
+                        inputmode="decimal"
+                    >
+
+                </div>
+
+
+                <div class="field-group">
+
+                    <label for="observerHeight">
+                        Camera height above ground (meters)
+                    </label>
+
+                    <input
+                        type="number"
+                        id="observerHeight"
+                        min="0"
+                        step="any"
+                        value="1.5"
+                        inputmode="decimal"
+                    >
+
+                </div>
+
+
+                <button
+                    type="button"
+                    class="primary-button calculator-button"
+                    id="calculateHeightBtn"
+                >
+                    Calculate Object Height
+                </button>
+
+
+                <div
+                    class="calculator-result"
+                    id="heightCalculatorResult"
+                    aria-live="polite"
+                >
+                    <span>CALCULATED HEIGHT</span>
+
+                    <strong id="calculatedHeight">—</strong>
+
+                    <p id="heightCalculatorMessage">
+                        Enter the known distance and elevation angle.
+                    </p>
+                </div>
+
+                <p class="calculator-note">
+                    Formula: height = camera height +
+                    horizontal distance × tan(elevation angle).
+                    The result is valid only if the inputs are accurate
+                    and the angle points to the object's top.
+                </p>
+
+            </div>
+
+        </section>
+
+
+        <!-- UNIT CONVERTER -->
+
+        <section class="converter-section">
+
+            <div class="section-heading">
+
+                <div>
+                    <span class="section-kicker">QUICK CONVERSION</span>
+
+                    <h2>Measurement Converter</h2>
+
+                    <p>
+                        Convert lengths between common measurement units.
+                    </p>
+                </div>
+
+            </div>
+
+
+            <div class="converter-card">
+
+                <div class="field-group">
+
+                    <label for="convertValue">
+                        Value
+                    </label>
+
+                    <input
+                        type="number"
+                        id="convertValue"
+                        min="0"
+                        step="any"
+                        value="1"
+                        inputmode="decimal"
+                    >
+
+                </div>
+
+
+                <div class="field-group">
+
+                    <label for="convertFrom">
+                        From
+                    </label>
+
+                    <select id="convertFrom">
+
+                        <option value="mm">Millimeters</option>
+                        <option value="cm">Centimeters</option>
+                        <option value="m" selected>Meters</option>
+                        <option value="km">Kilometers</option>
+                        <option value="in">Inches</option>
+                        <option value="ft">Feet</option>
+                        <option value="yd">Yards</option>
+
+                    </select>
+
+                </div>
+
+
+                <button
+                    type="button"
+                    class="swap-button"
+                    id="swapUnitsBtn"
+                    aria-label="Swap conversion units"
+                >
+                    ⇄
+                </button>
+
+
+                <div class="field-group">
+
+                    <label for="convertTo">
+                        To
+                    </label>
+
+                    <select id="convertTo">
+
+                        <option value="mm">Millimeters</option>
+                        <option value="cm">Centimeters</option>
+                        <option value="m">Meters</option>
+                        <option value="km">Kilometers</option>
+                        <option value="in">Inches</option>
+                        <option value="ft" selected>Feet</option>
+                        <option value="yd">Yards</option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="conversion-result">
+
+                    <span>CONVERTED RESULT</span>
+
+                    <strong id="conversionResult">3.28084 ft</strong>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- SUPPORT AND SAFETY -->
+
+        <section class="safety-section">
+
+            <div class="safety-icon">✓</div>
+
+            <div>
+                <h3>Measure responsibly</h3>
+
+                <p>
+                    For construction, medical, land surveying or
+                    other precision-critical work, verify measurements
+                    using a suitable calibrated measuring instrument.
+                    Camera estimates should not replace professional
+                    measurements.
+                </p>
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <!-- FOOTER -->
+
+    <footer class="footer">
+
+        <a class="footer-brand" href="#">
+            <span>Ｎ</span>
+            NAOL SMART RULER
+        </a>
+
+        <p>
+            Smart tools for measuring the world.
+        </p>
+
+        <p class="footer-copyright">
+            © <span id="currentYear">2026</span> NAOL.
+            All rights reserved.
+        </p>
+
+    </footer>
+
+</div>
+
+
+<!-- JAVASCRIPT -->
+
+<script src="script.js" defer></script>
+
+</body>
+</html>
